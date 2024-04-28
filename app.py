@@ -3,7 +3,8 @@ from flask_cors import cross_origin
 import pymysql
 
 app = Flask(__name__)
-db = pymysql.Connect(host='127.0.0.1', port=3306, user='root', passwd='257908', db='coursesystem', charset='utf8')
+db = pymysql.Connect(host='127.0.0.1', port=3306, user='root', passwd='257908', db='coursesystem', charset='utf8',
+                     autocommit=True)
 
 
 def get_cursur():
@@ -91,10 +92,8 @@ def query_selected_course():
         result = []
         sql = "select * from course where course_no = %s"
         for course_no in course_no_result:
-            print( "???",course_no[0])
             cursor.execute(sql, course_no[0])
             result.append(cursor.fetchall())
-            print("!!!",result)
         if len(result) == 0:
             response = jsonify()
             response.status_code = 204
@@ -107,6 +106,87 @@ def query_selected_course():
                      'capacity': data[5], 'selected': data[6], 'time': data[7]})
             response = jsonify(response_data)
             response.status_code = 200
+    cursor.close()
+    return response
+
+
+def check_schedule(user_id, course_time):
+    schedule = [[0 for i in range(13)]for j in range(6)]
+    cursor = get_cursur()
+    sql = "SELECT time FROM course, selectedcourse where course.course_no = selectedcourse.course_no and selectedcourse.student_id = %s"
+    cursor.execute(sql, user_id)
+    result = cursor.fetchall()
+    for temp in result:
+        real_time = temp[0]
+        for time in real_time.split(','):
+            day = 0
+            if time[0]=='一':
+                day = 1
+            elif time[0]=='二':
+                day = 2
+            elif time[0]=='三':
+                day = 3
+            elif time[0]=='四':
+                day = 4
+            elif time[0]=='五':
+                day = 5
+            time = time[1:].split('-')
+            start = int(time[0])
+            end = int(time[1])
+            for i in range(start, end+1):
+                schedule[day][i] = 1
+    for time in course_time.split(','):
+        day = 0
+        if time[0] == '一':
+            day = 1
+        elif time[0] == '二':
+            day = 2
+        elif time[0] == '三':
+            day = 3
+        elif time[0] == '四':
+            day = 4
+        elif time[0] == '五':
+            day = 5
+        time = time[1:].split('-')
+        start = int(time[0])
+        end = int(time[1])
+        for i in range(start, end + 1):
+            if schedule[day][i] != 0:
+                return False
+    return True
+
+
+
+
+
+
+@app.route('/api/selectcourse', methods=['OPTIONS', 'POST'])
+@cross_origin()
+def select_course():
+    hint = []
+    cursor = get_cursur()
+    json_data = request.json
+    for course_info in json_data:
+        sql = "SELECT * FROM selectedcourse where student_id = %s and course_id = %s"
+        result = cursor.execute(sql, (course_info['user_id'], course_info['course_id']))
+        if result != 0:
+            hint.append(f"已选此课程 ({course_info['course_name']})")
+        else:
+            sql = "SELECT * FROM course where course_id = %s and teacher_id = %s"
+            result = cursor.execute(sql, (course_info['course_id'], course_info['teacher_id']))
+            if result == 0:
+                hint.append(f"课程不存在 ({course_info['course_name']})")
+            else:
+                result = cursor.fetchone()
+                if not check_schedule(course_info['user_id'], result[7]):
+                    hint.append(f"课程时间冲突 ({course_info['course_name']})")
+                else:
+                    sql = "UPDATE course SET selected = %s where course_id = %s and teacher_id = %s"
+                    cursor.execute(sql, (str(int(result[6]) + 1), result[1], result[3]))
+                    sql = "INSERT INTO selectedcourse VALUES (%s, %s, %s, %s, %s, %s, %s)"
+                    cursor.execute(sql, (result[0], result[1], result[3], course_info['user_id'], 0, 0, 0))
+                    hint.append(f"选课成功 ({course_info['course_name']})")
+    response = jsonify({"status": "Success", "data": hint})
     cursor.close()
     return response
 

@@ -354,6 +354,7 @@ export default {
         this.selectedCourses.forEach((course) => {
           // 将每个课程信息转换为一个包含课程信息的对象，并将其添加到 requestBody 数组中
           requestBody.push({
+            user_id: this.userId,
             course_id: course.course_id,
             course_name: course.course_name,
             teacher_id: course.teacher_id,
@@ -366,18 +367,19 @@ export default {
 
         console.log("选课请求发送的 requestBody", requestBody);
 
-        const apiUrl = `${this.host}/api/students/${this.userId}/courses`;
+        const apiUrl = `${this.host}/api/selectcourse`;
         const response = await axios.post(apiUrl, requestBody);
 
         console.log("selectCourses return response: ", response);
 
         const result = response.data;
-        if (result.code === 200) {
-          ElMessage.success("选课成功");
+        console.log("???",result.status, result.data)
+        if (result.status === "Success") {
+          for (const resultKey in result.data) {
+            ElMessage.success("选课结果："+result.data[resultKey]);
+          }
           this.selectedCourses = []; // 清空已选课程
-          this.fetchCourses(); // 重新查询课表
-        } else if (result.code === 401) {
-          ElMessage.warning(response.data.msg);
+          await this.fetchCourses(); // 重新查询课表
         } else {
           ElMessage.error("选课失败：" + result.message);
         }
