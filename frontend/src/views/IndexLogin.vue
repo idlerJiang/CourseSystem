@@ -87,7 +87,7 @@ export default {
       // 使用 md5 对密码进行摘要处理
       const hashedPassword = md5(id + password);
 
-      const apiUrl = `${this.host}/api/users/${id}/pwd`;
+      const apiUrl = `${this.host}/api/login`;
       const requestBody = {
         id,
         password: hashedPassword,
@@ -98,8 +98,8 @@ export default {
         const response = await axios.post(apiUrl, requestBody);
 
         // 处理返回码不为200的时候，提示登录失败
-        if (response.data.code !== 200) {
-          ElMessage.error("登录失败，请检查账号和密码是否正确" + response.data.code);
+        if (response.data.status !== "Success") {
+          ElMessage.error("登录失败：" + response.data.data);
           return;
         }
 
@@ -112,12 +112,10 @@ export default {
         else {
           this.$router.push({ name: 'teachers', params: { userId: id, userName: response.data.data.userName } });
         }
-
       }
       catch (error) {
-        console.error("登录失败", error);
+        console.error("登录失败：", error);
         ElMessage.error("登录失败");
-
       }
     }
   },
