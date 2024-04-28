@@ -3,24 +3,18 @@ from flask_cors import cross_origin
 import pymysql
 
 app = Flask(__name__)
-db = pymysql.Connect(
-    host='127.0.0.1',
-    port=3306,
-    user='root',
-    passwd='257908',
-    db='coursesystem',
-    charset='utf8')
+db = pymysql.Connect(host='127.0.0.1', port=3306, user='root', passwd='257908', db='coursesystem', charset='utf8')
 
 
-def check_db_connection():
+def get_cursur():
     db.ping(reconnect=True)
+    return db.cursor()
 
 
 @app.route('/api/login', methods=['OPTIONS', 'POST'])
 @cross_origin()
 def user_login():
-    check_db_connection()
-    cursor = db.cursor()
+    cursor = get_cursur()
     json_data = request.json
     print('attempting login from ID:', json_data['id'])
     cursor.execute("SELECT * FROM user where user_id = %s and user_password = %s",
@@ -41,16 +35,10 @@ def user_login():
 @app.route('/api/querycourses', methods=['OPTIONS', 'POST'])
 @cross_origin()
 def query_course():
-    check_db_connection()
-    cursor = db.cursor()
+    cursor = get_cursur()
     json_data = request.json
     sql = "SELECT * FROM course where 1 = 1"
     params = []
-    # course_id: course_id,
-    # course_name: course_name,
-    # teacher_id: teacher_id,
-    # teacher_name: teacher_name,
-    # course_time: course_time
     if json_data['course_id'] is not None:
         print(json_data['course_id'])
         sql += " AND course_id like %s"
@@ -71,17 +59,8 @@ def query_course():
         print(json_data['course_time'])
         sql += " AND course_time like %s"
         params.append("%" + str(json_data['course_time']) + "%")
-    print(sql)
     cursor.execute(sql, params)
     result = cursor.fetchall()
-    # print(result)
-    # course_id: selectedCourse.course_id,
-    # course_name: selectedCourse.course_name,
-    # teacher_id: selectedCourse.teacher_id,
-    # teacher_name: selectedCourse.teacher_name,
-    # capacity: selectedCourse.capacity,
-    # selected_number: selectedCourse.selected,
-    # time: selectedCourse.time
     if len(result) == 0:
         response = jsonify()
         response.status_code = 204
@@ -93,6 +72,41 @@ def query_course():
                  'capacity': data[5], 'selected': data[6], 'time': data[7]})
         response = jsonify(response_data)
         response.status_code = 200
+    cursor.close()
+    return response
+
+
+@app.route('/api/queryselectedcourses', methods=['OPTIONS', 'GET'])
+@cross_origin()
+def query_selected_course():
+    cursor = get_cursur()
+    user_id = request.args.get("id")
+    sql = "SELECT course_no FROM selectedcourse where student_id = %s"
+    cursor.execute(sql, user_id)
+    course_no_result = cursor.fetchall()
+    if len(course_no_result) == 0:
+        response = jsonify()
+        response.status_code = 204
+    else:
+        result = []
+        sql = "select * from course where course_no = %s"
+        for course_no in course_no_result:
+            print( "???",course_no[0])
+            cursor.execute(sql, course_no[0])
+            result.append(cursor.fetchall())
+            print("!!!",result)
+        if len(result) == 0:
+            response = jsonify()
+            response.status_code = 204
+        else:
+            response_data = list()
+            for data in result:
+                data = data[0]
+                response_data.append(
+                    {'course_id': data[1], 'course_name': data[2], 'teacher_id': data[3], 'teacher_name': data[4],
+                     'capacity': data[5], 'selected': data[6], 'time': data[7]})
+            response = jsonify(response_data)
+            response.status_code = 200
     cursor.close()
     return response
 

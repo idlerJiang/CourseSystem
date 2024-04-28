@@ -298,16 +298,31 @@ export default {
     async fetchCourses() {
 
       // 构造请求体
-      const apiUrl = `${this.host}/api/students/${this.userId}/courses`;
+      const apiUrl = `${this.host}/api/queryselectedcourses`;
 
       try {
         // 发送 GET 请求
-        const response = await axios.get(apiUrl);
+        const response = await axios.get(apiUrl, {params: {id: this.userId}});
 
-        console.log("return from fetchCourses, response: ", response);
-
+        console.log("return from fetchCourses, response: ", response.data);
+        if (response.status === 204) {
+          console.error("未查询到已选课程");
+          ElMessage.error("未查询到已选课程");
+          return;
+        }
         const courseData = response.data;
-        this.myCourses = courseData.data.map(course => JSON.parse(course));
+        this.myCourses = courseData.map(course => {
+          return {
+            course_id: course.course_id,
+            course_name: course.course_name,
+            teacher_id: course.teacher_id,
+            teacher_name: course.teacher_name,
+            capacity: course.capacity,
+            selected_number: course.selected,
+            time: course.time
+          };
+        });
+        this.showForm = true;
         console.log("this.myCourses", this.myCourses);
 
       } catch (error) {
