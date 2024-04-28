@@ -15,12 +15,14 @@
             <div class="flex items-center justify-end h-full">
               <div style="display: flex; align-items: center; justify-content: center; height: 100%;">
                 <el-avatar :size="32" class="mr-4"
-                  src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
-                <span class="text-lg font-semibold mr-5" style="margin-left: 20px ; margin-right: 10px;">{{ this.userName
-                }}</span>
+                           src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"/>
+                <span class="text-lg font-semibold mr-5" style="margin-left: 20px ; margin-right: 10px;">{{
+                    this.userName
+                  }}</span>
                 <span class="text-sm mr-4"
-                  style="color: var(--el-text-color-regular); position: relative; top: 2px;margin-right: 10px;">{{
-                    this.userId }}</span>
+                      style="color: var(--el-text-color-regular); position: relative; top: 2px;margin-right: 10px;">{{
+                    this.userId
+                  }}</span>
                 <el-tag type="success" class="ml-2">学生</el-tag>
               </div>
             </div>
@@ -137,7 +139,7 @@ import axios from "axios";
 import StudentQueryScore from "./StudentQueryScore.vue";
 import CourseSchedule from "../components/CourseSchedule.vue";
 
-import { ElMessage } from 'element-plus'
+import {ElMessage} from 'element-plus'
 
 export default {
   name: "StudentPages",
@@ -147,9 +149,7 @@ export default {
   },
 
   // 来自父组件的数据
-  props: {
-
-  },
+  props: {},
 
   // 在created生命周期钩子中访问路由参数
   created() {
@@ -246,7 +246,7 @@ export default {
       const course_time = this.queryInfo.CourseTime;
 
       // 构造请求体
-      const apiUrl = `${this.host}/api/courses`;
+      const apiUrl = `${this.host}/api/querycourses`;
       const queryParams = {
         course_id: course_id,
         course_name: course_name,
@@ -254,44 +254,44 @@ export default {
         teacher_name: teacher_name,
         course_time: course_time
       };
-      await axios.get(apiUrl, { params: queryParams })
-        .then(response => {
+      await axios.post(apiUrl, queryParams)
+          .then(response => {
+            console.log("queryCourses method return code", response.status);
+            if (response.status === 204) {
+              ElMessage.error('未查询到结果')
+              return
+            }
 
-          // 将查询选课的结果显示到页面上
-          const courseData = response.data.data;
+            // 将查询选课的结果显示到页面上
+            const courseData = response.data;
 
-          // 把courseData中的数据传递给this.courseInfo
-          if (courseData != null) {
-            // 显示响应结果
-            ElMessage.success('选课信息查询成功');
+            // 把courseData中的数据传递给this.courseInfo
+            if (courseData != null) {
+              // 显示响应结果
+              ElMessage.success('选课信息查询成功');
+              this.courseInfo = courseData.map((selectedCourse) => {
+                return {
+                  course_id: selectedCourse.course_id,
+                  course_name: selectedCourse.course_name,
+                  teacher_id: selectedCourse.teacher_id,
+                  teacher_name: selectedCourse.teacher_name,
+                  capacity: selectedCourse.capacity,
+                  selected_number: selectedCourse.selected,
+                  time: selectedCourse.time
+                };
+              });
+              this.showForm = true;
+            } else {
+              ElMessage.error('选课信息查询失败');
+            }
+            console.log("this.courseInfo", this.courseInfo);
+            // 显示表单组件
 
-            console.log("queryCourses method return response.data", response.data);
-            // console.log("response.data.data: courseData", courseData);
-
-            this.courseInfo = courseData.map((course) => {
-              const selectedCourse = JSON.parse(course);
-              return {
-                course_id: selectedCourse.course_id,
-                course_name: selectedCourse.course_name,
-                teacher_id: selectedCourse.teacher_id,
-                teacher_name: selectedCourse.teacher_name,
-                capacity: selectedCourse.capacity,
-                selected_number: selectedCourse.selected_number,
-                time: selectedCourse.time
-              };
-            });
-            this.showForm = true;
-          } else {
-            ElMessage.error('选课信息查询失败');
-          }
-          console.log("this.courseInfo", this.courseInfo);
-          // 显示表单组件
-
-        }, error => {
-          // 处理响应失败的情况
-          console.error("选课信息查询失败", error);
-          ElMessage.error('选课信息查询失败')
-        })
+          }, error => {
+            // 处理响应失败的情况
+            console.error("选课信息查询失败", error);
+            ElMessage.error('选课信息查询失败')
+          })
     },
 
     // 查询已选课程
@@ -357,15 +357,13 @@ export default {
         console.log("selectCourses return response: ", response);
 
         const result = response.data;
-        if (result.code == 200) {
+        if (result.code === 200) {
           ElMessage.success("选课成功");
           this.selectedCourses = []; // 清空已选课程
           this.fetchCourses(); // 重新查询课表
-        }
-        else if (result.code == 401) {
+        } else if (result.code === 401) {
           ElMessage.warning(response.data.msg);
-        }
-        else {
+        } else {
           ElMessage.error("选课失败：" + result.message);
         }
       } catch (error) {
@@ -397,7 +395,7 @@ export default {
         console.log("退课请求发送的 requestBody", requestBody);
 
         const apiUrl = `${this.host}/api/students/${this.userId}/courses`;
-        const response = await axios.delete(apiUrl, { data: requestBody });
+        const response = await axios.delete(apiUrl, {data: requestBody});
 
         console.log("response return from dropCourses()", response);
 
@@ -406,8 +404,7 @@ export default {
           ElMessage.success("退课成功");
           this.deletedCourses = []; // 清空已选课程
           this.fetchCourses(); // 重新查询课表
-        }
-        else {
+        } else {
           ElMessage.error("退课失败：" + response.data.msg);
         }
       } catch (error) {
@@ -427,8 +424,7 @@ export default {
         console.log("return from fetchScores, response: ", response);
         if (response.data.code == 200) {
           ElMessage.success("成绩信息查询成功");
-        }
-        else {
+        } else {
           ElMessage.error("成绩信息查询失败");
           return;
         }
