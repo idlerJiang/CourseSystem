@@ -14,12 +14,14 @@
             <div class="flex items-center justify-end h-full">
               <div style="display: flex; align-items: center; justify-content: center; height: 100%;">
                 <el-avatar :size="32" class="mr-4"
-                  src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png" />
+                           src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"/>
                 <span class="text-lg font-semibold mr-5" style="margin-left: 20px ; margin-right: 10px;">{{
-                  this.userName }}</span>
+                    this.userName
+                  }}</span>
                 <span class="text-sm mr-4"
-                  style="color: var(--el-text-color-regular); position: relative; top: 2px;margin-right: 10px;">{{
-                    this.userId }}</span>
+                      style="color: var(--el-text-color-regular); position: relative; top: 2px;margin-right: 10px;">{{
+                    this.userId
+                  }}</span>
                 <el-tag type="success" class="ml-2">老师</el-tag>
               </div>
             </div>
@@ -43,13 +45,13 @@
 
           <div v-if="selectedFunction === '开课详情'">
             <el-table :data="myCourses" style="width: 100%">
-              <el-table-column prop="course_id" label="课程号" />
-              <el-table-column prop="course_name" label="课程名" />
-              <el-table-column prop="teacher_id" label="教师号" />
-              <el-table-column prop="teacher_name" label="教师姓名" />
-              <el-table-column prop="capacity" label="课程容量" />
-              <el-table-column prop="selected_number" label="已选人数" />
-              <el-table-column prop="time" label="上课时间" />
+              <el-table-column prop="course_id" label="课程号"/>
+              <el-table-column prop="course_name" label="课程名"/>
+              <el-table-column prop="teacher_id" label="教师号"/>
+              <el-table-column prop="teacher_name" label="教师姓名"/>
+              <el-table-column prop="capacity" label="课程容量"/>
+              <el-table-column prop="selected_number" label="已选人数"/>
+              <el-table-column prop="time" label="上课时间"/>
             </el-table>
           </div>
 
@@ -60,13 +62,13 @@
               <label for="course-select">选择课程班级：</label>
               <el-select v-model="selectedCourse" class="m-2" placeholder="">
                 <el-option v-for="course in myCourses" :key="course.course_id" :label="course - select"
-                  :value="course.course_id" />
+                           :value="course.course_id"/>
               </el-select>
 
               <!--对选中的selectedCourse进行查询，返回数据给tableData-->
               <el-table :data="tableData" stripe style="width: 100%">
-                <el-table-column prop="student_id" label="学号" width="180" />
-                <el-table-column prop="student_name" label="姓名" width="180" />
+                <el-table-column prop="student_id" label="学号" width="180"/>
+                <el-table-column prop="student_name" label="姓名" width="180"/>
                 <el-table-column label="成绩">
                   <template v-slot="scope">
                     <template v-if="scope.row">
@@ -74,13 +76,13 @@
                         <el-col :span="4">
                           <label for="daily-score-input">平时成绩</label>
                           <el-input v-model="scope.row.daily_score" class="w-80" placeholder="平时成绩"
-                            id="daily-score-input" />
+                                    id="daily-score-input"/>
                         </el-col>
 
                         <el-col :span="4">
                           <label for="exam-score-input">考试成绩</label>
                           <el-input v-model="scope.row.examination_score" class="w-80" placeholder="考试成绩"
-                            id="exam-score-input" />
+                                    id="exam-score-input"/>
                         </el-col>
 
                       </el-row>
@@ -107,22 +109,18 @@
     </el-container>
   </div>
 </template>
-    
+
 <script>
 import axios from "axios";
-import { ElMessage } from 'element-plus'
-
+import {ElMessage} from 'element-plus'
 
 
 export default {
   name: "TeacherPages",
-  components: {
-
-  },
+  components: {},
 
   // 来自父组件的数据
-  props: {
-  },
+  props: {},
 
   // 在created生命周期钩子中访问路由参数
   created() {
@@ -195,16 +193,26 @@ export default {
     async fetchCourses() {
 
       // 构造请求体 /api/teachers/{userId}/courses
-      const apiUrl = `${this.host}/api/teachers/${this.userId}/courses`;
+      const apiUrl = `${this.host}/api/teachers/fetchcourse`;
       console.log("apiUrl", apiUrl);
       try {
         // 发送 GET 请求
-        const response = await axios.get(apiUrl);
+        const response = await axios.get(apiUrl, {params: {id: this.userId}});
 
         console.log("return from fetchCourses, response: ", response.data);
 
         const courseData = response.data;
-        this.myCourses = courseData.data.map(course => JSON.parse(course));
+        this.myCourses = courseData.map(course => {
+          return {
+            course_id: course.course_id,
+            course_name: course.course_name,
+            teacher_id: course.teacher_id,
+            teacher_name: course.teacher_name,
+            capacity: course.capacity,
+            selected_number: course.selected,
+            time: course.time
+          };
+        });
         console.log("this.myCourses", this.myCourses);
 
       } catch (error) {
@@ -234,8 +242,7 @@ export default {
         this.tableData = courseData.data.map(course => JSON.parse(course));
 
         console.log("this.tableData", this.tableData);
-      }
-      catch (error) {
+      } catch (error) {
         console.error("该班级下学生信息查询失败", error);
         ElMessage.error("班级下学生信息查询失败");
       }
@@ -266,12 +273,10 @@ export default {
         if (response.data.code === 200) {
           console.log("return from fetchCourses, response:", response);
           ElMessage.success("成绩上传成功");
-        }
-        else {
+        } else {
           ElMessage.error("成绩上传失败");
         }
-      }
-      catch (error) {
+      } catch (error) {
         console.error("成绩上传失败", error);
         ElMessage.error("成绩上传失败");
       }
@@ -279,7 +284,7 @@ export default {
   },
 };
 </script>
-    
+
 <style>
 .top-bar {
   background: #208fcb;

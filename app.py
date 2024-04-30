@@ -231,5 +231,26 @@ def fetch_score():
     return response
 
 
+@app.route('/api/teachers/fetchcourse', methods=['OPTIONS', 'GET'])
+@cross_origin()
+def teacher_fetch_course():
+    user_id = request.args.get("id")
+    response_data = []
+    cursor = get_cursur()
+    sql = "SELECT * FROM course where teacher_id = %s"
+    result = cursor.execute(sql, user_id)
+    if cursor.rowcount == 0:
+        response = jsonify()
+    else:
+        for data in cursor.fetchall():
+            response_data.append(
+                {'course_id': data[1], 'course_name': data[2], 'teacher_id': data[3], 'teacher_name': data[4],
+                 'capacity': data[5], 'selected': data[6], 'time': data[7]})
+        response = jsonify(response_data)
+    cursor.close()
+    response.status_code = 200
+    return response
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=9000)
