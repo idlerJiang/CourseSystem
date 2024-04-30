@@ -111,7 +111,7 @@ def query_selected_course():
 
 
 def check_schedule(user_id, course_time):
-    schedule = [[0 for i in range(13)]for j in range(6)]
+    schedule = [[0 for i in range(13)] for j in range(6)]
     cursor = get_cursur()
     sql = "SELECT time FROM course, selectedcourse where course.course_no = selectedcourse.course_no and selectedcourse.student_id = %s"
     cursor.execute(sql, user_id)
@@ -120,20 +120,20 @@ def check_schedule(user_id, course_time):
         real_time = temp[0]
         for time in real_time.split(','):
             day = 0
-            if time[0]=='一':
+            if time[0] == '一':
                 day = 1
-            elif time[0]=='二':
+            elif time[0] == '二':
                 day = 2
-            elif time[0]=='三':
+            elif time[0] == '三':
                 day = 3
-            elif time[0]=='四':
+            elif time[0] == '四':
                 day = 4
-            elif time[0]=='五':
+            elif time[0] == '五':
                 day = 5
             time = time[1:].split('-')
             start = int(time[0])
             end = int(time[1])
-            for i in range(start, end+1):
+            for i in range(start, end + 1):
                 schedule[day][i] = 1
     for time in course_time.split(','):
         day = 0
@@ -154,10 +154,6 @@ def check_schedule(user_id, course_time):
             if schedule[day][i] != 0:
                 return False
     return True
-
-
-
-
 
 
 @app.route('/api/selectcourse', methods=['OPTIONS', 'POST'])
@@ -212,6 +208,26 @@ def drop_course():
             hint.append(f"退课成功 ({course_info['course_name']})")
     response = jsonify({"status": "Success", "data": hint})
     cursor.close()
+    return response
+
+
+@app.route('/api/fetchscore', methods=['OPTIONS', 'GET'])
+@cross_origin()
+def fetch_score():
+    user_id = request.args.get("id")
+    response_data = []
+    cursor = get_cursur()
+    sql = "SELECT course.course_id, course.course_name, course.teacher_name, selectedcourse.student_total_score FROM course,selectedcourse where selectedcourse.student_id = %s and course.course_no = selectedcourse.course_no"
+    result = cursor.execute(sql, user_id)
+    if cursor.rowcount == 0:
+        response = jsonify()
+    else:
+        for data in cursor.fetchall():
+            response_data.append(
+                {'course_id': data[0], 'course_name': data[1], 'teacher_name': data[2], 'score': data[3]})
+        response = jsonify(response_data)
+    cursor.close()
+    response.status_code = 200
     return response
 
 

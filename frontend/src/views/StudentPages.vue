@@ -436,20 +436,26 @@ export default {
     // 成绩查询功能
     async fetchScores() {
       // 构造请求体
-      const apiUrl = `${this.host}/api/students/${this.userId}/courses/score`;
+      const apiUrl = `${this.host}/api/fetchscore`;
       try {
         // 发送 GET 请求
-        const response = await axios.get(apiUrl);
+        const response = await axios.get(apiUrl, {params: {id: this.userId}});
 
         console.log("return from fetchScores, response: ", response);
-        if (response.data.code == 200) {
+        if (response.status === 200) {
           ElMessage.success("成绩信息查询成功");
         } else {
           ElMessage.error("成绩信息查询失败");
           return;
         }
         const scoreData = response.data;
-        this.myScores = scoreData.data.map(score => JSON.parse(score));
+        this.myScores = scoreData.map(score => {return {
+            course_id: score.course_id,
+            course_name: score.course_name,
+            teacher_name: score.teacher_name,
+            score: score.score
+          };
+        });
         console.log("this.myScores", this.myScores);
 
       } catch (error) {
