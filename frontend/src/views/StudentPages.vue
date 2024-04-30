@@ -373,7 +373,6 @@ export default {
         console.log("selectCourses return response: ", response);
 
         const result = response.data;
-        console.log("???",result.status, result.data)
         if (result.status === "Success") {
           for (const resultKey in result.data) {
             ElMessage.success("选课结果："+result.data[resultKey]);
@@ -381,7 +380,7 @@ export default {
           this.selectedCourses = []; // 清空已选课程
           await this.fetchCourses(); // 重新查询课表
         } else {
-          ElMessage.error("选课失败：" + result.message);
+          ElMessage.error("选课失败：" + result.data);
         }
       } catch (error) {
         console.error("选课操作失败", error);
@@ -399,6 +398,7 @@ export default {
 
         this.deletedCourses.forEach((course) => {
           requestBody.push({
+            user_id: this.userId,
             course_id: course.course_id,
             course_name: course.course_name,
             teacher_id: course.teacher_id,
@@ -411,18 +411,21 @@ export default {
 
         console.log("退课请求发送的 requestBody", requestBody);
 
-        const apiUrl = `${this.host}/api/students/${this.userId}/courses`;
-        const response = await axios.delete(apiUrl, {data: requestBody});
+        const apiUrl = `${this.host}/api/dropcourse`;
+        const response = await axios.post(apiUrl, requestBody);
 
         console.log("response return from dropCourses()", response);
 
-        if (response.data.code == 200) {
+        const result = response.data;
 
-          ElMessage.success("退课成功");
+        if (result.status === "Success") {
+          for (const resultKey in result.data) {
+            ElMessage.success("退课结果："+result.data[resultKey]);
+          }
           this.deletedCourses = []; // 清空已选课程
-          this.fetchCourses(); // 重新查询课表
+          await this.fetchCourses(); // 重新查询课表
         } else {
-          ElMessage.error("退课失败：" + response.data.msg);
+          ElMessage.error("退课失败：" + result.data);
         }
       } catch (error) {
         console.error("退课操作失败", error);

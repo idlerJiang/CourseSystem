@@ -174,18 +174,42 @@ def select_course():
         else:
             sql = "SELECT * FROM course where course_id = %s and teacher_id = %s"
             result = cursor.execute(sql, (course_info['course_id'], course_info['teacher_id']))
-            if result == 0:
+            if cursor.rowcount == 0:
                 hint.append(f"课程不存在 ({course_info['course_name']})")
             else:
                 result = cursor.fetchone()
-                if not check_schedule(course_info['user_id'], result[7]):
+                if result[5] <= result[6]:
+                    hint.append(f"选课人数已满 ({course_info['course_name']})")
+                elif not check_schedule(course_info['user_id'], result[7]):
                     hint.append(f"课程时间冲突 ({course_info['course_name']})")
                 else:
-                    sql = "UPDATE course SET selected = %s where course_id = %s and teacher_id = %s"
-                    cursor.execute(sql, (str(int(result[6]) + 1), result[1], result[3]))
+                    sql = "UPDATE course SET selected = selected + 1 where course_id = %s and teacher_id = %s"
+                    cursor.execute(sql, (result[1], result[3]))
                     sql = "INSERT INTO selectedcourse VALUES (%s, %s, %s, %s, %s, %s, %s)"
                     cursor.execute(sql, (result[0], result[1], result[3], course_info['user_id'], 0, 0, 0))
                     hint.append(f"选课成功 ({course_info['course_name']})")
+    response = jsonify({"status": "Success", "data": hint})
+    cursor.close()
+    return response
+
+
+@app.route('/api/dropcourse', methods=['OPTIONS', 'POST'])
+@cross_origin()
+def drop_course():
+    hint = []
+    cursor = get_cursur()
+    json_data = request.json
+    for course_info in json_data:
+        sql = "SELECT * FROM selectedcourse where student_id = %s and course_id = %s"
+        result = cursor.execute(sql, (course_info['user_id'], course_info['course_id']))
+        if result == 0:
+            hint.append(f"未选此课程 ({course_info['course_name']})")
+        else:
+            sql = "DELETE FROM selectedcourse where course_id = %s and student_id = %s"
+            cursor.execute(sql, (course_info['course_id'], course_info['user_id']))
+            sql = "UPDATE course SET selected = selected - 1 where course_id = %s and teacher_id = %s"
+            cursor.execute(sql, (course_info['course_id'], course_info['teacher_id']))
+            hint.append(f"退课成功 ({course_info['course_name']})")
     response = jsonify({"status": "Success", "data": hint})
     cursor.close()
     return response
