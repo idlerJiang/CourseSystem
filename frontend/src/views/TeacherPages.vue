@@ -229,17 +229,35 @@ export default {
     async fetchStudents() {
 
       // 构造请求体
-      const apiUrl = `${this.host}/api/teachers/${this.userId}/courses/${this.selectedCourse}`;
+      const apiUrl = `${this.host}/api/teachers/fetchstudent`;
       console.log("this.selectedCourse", this.selectedCourse);
 
       try {
-        // 发送 GET 请求
-        const response = await axios.get(apiUrl);
+        const queryParams = {
+          user_id: this.userId,
+          course_id: this.selectedCourse
+        };
+        // 发送 POST 请求
+        const response = await axios.post(apiUrl, queryParams);
         console.log("return from fetchStudents, response: ", response);
 
         // 用JSON.parse()方法将字符串转换为JSON对象
+        if (response.status === 204) {
+          ElMessage.error("班级下暂无学生");
+          this.tableData = [{}];
+          return;
+        }
         const courseData = response.data;
-        this.tableData = courseData.data.map(course => JSON.parse(course));
+        this.tableData = courseData.map(course => {
+          return {
+            course_id: course.course_id,
+            student_name: course.student_name,
+            student_id: course.student_id,
+            teacher_id: course.teacher_id,
+            daily_score: course.daily_score,
+            examination_score: course.examination_score
+          };
+        });
 
         console.log("this.tableData", this.tableData);
       } catch (error) {
@@ -252,13 +270,15 @@ export default {
     async submitScore() {
 
       // 构造请求体,路径参数传递教师号和课程号
-      const apiUrl = `${this.host}/api/teachers/${this.userId}/courses/${this.selectedCourse}`;
+      const apiUrl = `${this.host}/api/teachers/submitscore`;
       console.log("this.tableData", this.tableData);
 
       try {
         // 将tableData中的数据转换为SubmitData中的数据
         this.SubmitData = this.tableData.map(student => {
           return {
+            user_id: this.userId,
+            course_id: this.selectedCourse,
             student_id: student.student_id,
             daily_score: student.daily_score,
             examination_score: student.examination_score
@@ -270,7 +290,7 @@ export default {
         const response = await axios.post(apiUrl, this.SubmitData);
 
         // 返回状态码为200，表示上传成功
-        if (response.data.code === 200) {
+        if (response.status === 200) {
           console.log("return from fetchCourses, response:", response);
           ElMessage.success("成绩上传成功");
         } else {

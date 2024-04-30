@@ -252,5 +252,42 @@ def teacher_fetch_course():
     return response
 
 
+@app.route('/api/teachers/fetchstudent', methods=['OPTIONS', 'POST'])
+@cross_origin()
+def teacher_fetch_student():
+    json_data = request.json
+    response_data = []
+    cursor = get_cursur()
+    sql = (
+        "SELECT user.user_name, selectedcourse.course_id, selectedcourse.teacher_id, selectedcourse.student_id, selectedcourse.student_usual_score, selectedcourse.student_exam_score FROM user, selectedcourse where selectedcourse.teacher_id = %s and selectedcourse.course_id = %s and user.user_id = selectedcourse.student_id")
+    result = cursor.execute(sql, (json_data['user_id'], json_data['course_id']))
+    if cursor.rowcount == 0:
+        response = jsonify()
+        response.status_code = 204
+    else:
+        for data in cursor.fetchall():
+            response_data.append(
+                {'course_id': data[1], 'teacher_id': data[2], 'student_id': data[3],
+                 'student_name': data[0], 'daily_score': data[4], 'examination_score': data[5]})
+        response = jsonify(response_data)
+        response.status_code = 200
+    cursor.close()
+    return response
+
+
+@app.route('/api/teachers/submitscore', methods=['OPTIONS', 'POST'])
+@cross_origin()
+def teacher_submit_score():
+    json_data = request.json
+    cursor = get_cursur()
+    for data in json_data:
+        sql = "UPDATE selectedcourse SET student_usual_score = %s, student_exam_score = %s, student_total_score = 0.4 * %s + 0.6 * %s WHERE course_id = %s and student_id = %s"
+        result = cursor.execute(sql, (data['daily_score'], data['examination_score'], data['daily_score'], data['examination_score'], data['course_id'], data['student_id']))
+    response = jsonify()
+    cursor.close()
+    response.status_code = 200
+    return response
+
+
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=9000)
