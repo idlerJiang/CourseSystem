@@ -92,6 +92,7 @@
                   <el-table-column prop="capacity" label="课程容量"></el-table-column>
                   <el-table-column prop="selected_number" label="已选人数"></el-table-column>
                   <el-table-column prop="time" label="上课时间"></el-table-column>
+                  <el-table-column prop="location" label="上课地点"></el-table-column>
                 </el-table>
                 <div style="margin: 10px;">
                   <el-button type="primary" @click="selectCourses">确认选课</el-button>
@@ -184,7 +185,8 @@ export default {
         teacher_name: "teacher_name",
         capacity: 0,
         selected_number: 0,
-        time: "time"
+        time: "time",
+        location: "location"
       }],
 
       // 选课功能中选中的课程号
@@ -277,7 +279,8 @@ export default {
                   teacher_name: selectedCourse.teacher_name,
                   capacity: selectedCourse.capacity,
                   selected_number: selectedCourse.selected,
-                  time: selectedCourse.time
+                  time: selectedCourse.time,
+                  location: selectedCourse.location,
                 };
               });
               this.showForm = true;

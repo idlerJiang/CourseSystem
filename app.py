@@ -1,86 +1,66 @@
 from flask import Flask, jsonify, request
 from flask_cors import cross_origin
 import pymysql
+import sqltool
 
 app = Flask(__name__)
-db = pymysql.Connect(host='127.0.0.1', port=3306, user='root', passwd='257908', db='coursesystem', charset='utf8',
-                     autocommit=True)
+db = pymysql.Connect(host='127.0.0.1', port=3306, user='root', passwd='257908', db='coursesystem', charset='utf8')
 
 
-def get_cursur():
+def get_cursor():
     db.ping(reconnect=True)
     return db.cursor()
+
+
+def commit():
+    db.ping(reconnect=True)
+    db.commit()
 
 
 @app.route('/api/login', methods=['OPTIONS', 'POST'])
 @cross_origin()
 def user_login():
-    cursor = get_cursur()
     json_data = request.json
-    print('attempting login from ID:', json_data['id'])
-    cursor.execute("SELECT * FROM user where user_id = %s and user_password = %s",
-                   (json_data['id'], json_data['password']))
-    result = cursor.fetchall()
-    print(len(result))
-    if len(result) == 0:
+    print('attempting login by ID: ', json_data['id'])
+    print('attempting login by password: ', json_data['password'])
+    cursor = get_cursor()
+    user_role, user_name = sqltool.login(cursor, json_data['id'], json_data['password'])
+    if user_role == -1:
         response = jsonify(
-            {"status": "Failed", "data": "用户名或密码错误"})
+            {"status": "Failed", "data": "系统错误！请联系管理员！"})
+    elif user_role == 0:
+        response = jsonify(
+            {"status": "Failed", "data": "账号或密码错误！"})
     else:
         response = jsonify(
-            {"status": "Success", "data": {'userName': result[0][1], "roleId": result[0][3]}})
+            {"status": "Success", "data": {'userName': user_name, "roleId": user_role}})
         response.status_code = 200
     cursor.close()
+    commit()
     return response
 
 
 @app.route('/api/querycourses', methods=['OPTIONS', 'POST'])
 @cross_origin()
 def query_course():
-    cursor = get_cursur()
+    cursor = get_cursor()
     json_data = request.json
-    sql = "SELECT * FROM course where 1 = 1"
-    params = []
-    if json_data['course_id'] is not None:
-        print(json_data['course_id'])
-        sql += " AND course_id like %s"
-        params.append("%" + str(json_data['course_id']) + "%")
-    if json_data['course_name'] is not None:
-        print(json_data['course_name'])
-        sql += " AND course_name like %s"
-        params.append("%" + str(json_data['course_name']) + "%")
-    if json_data['teacher_id'] is not None:
-        print(json_data['teacher_id'])
-        sql += " AND teacher_id like %s"
-        params.append("%" + str(json_data['teacher_id']) + "%")
-    if json_data['teacher_name'] is not None:
-        print(json_data['teacher_name'])
-        sql += " AND teacher_name like %s"
-        params.append("%" + str(json_data['teacher_name']) + "%")
-    if json_data['course_time'] is not None:
-        print(json_data['course_time'])
-        sql += " AND course_time like %s"
-        params.append("%" + str(json_data['course_time']) + "%")
-    cursor.execute(sql, params)
-    result = cursor.fetchall()
+    result = sqltool.query_course(cursor, json_data['course_id'], json_data['course_name'], json_data['teacher_id'], json_data['teacher_name'], json_data['course_time'])
     if len(result) == 0:
         response = jsonify()
         response.status_code = 204
     else:
-        response_data = list()
-        for data in result:
-            response_data.append(
-                {'course_id': data[1], 'course_name': data[2], 'teacher_id': data[3], 'teacher_name': data[4],
-                 'capacity': data[5], 'selected': data[6], 'time': data[7]})
-        response = jsonify(response_data)
+        response = jsonify(result)
         response.status_code = 200
     cursor.close()
+    commit()
     return response
 
 
 @app.route('/api/queryselectedcourses', methods=['OPTIONS', 'GET'])
 @cross_origin()
 def query_selected_course():
-    cursor = get_cursur()
+    cursor = get_cursor()
     user_id = request.args.get("id")
     sql = "SELECT course_no FROM selectedcourse where student_id = %s"
     cursor.execute(sql, user_id)
@@ -112,7 +92,7 @@ def query_selected_course():
 
 def check_schedule(user_id, course_time):
     schedule = [[0 for i in range(13)] for j in range(6)]
-    cursor = get_cursur()
+    cursor = get_cursor()
     sql = "SELECT time FROM course, selectedcourse where course.course_no = selectedcourse.course_no and selectedcourse.student_id = %s"
     cursor.execute(sql, user_id)
     result = cursor.fetchall()
@@ -160,7 +140,7 @@ def check_schedule(user_id, course_time):
 @cross_origin()
 def select_course():
     hint = []
-    cursor = get_cursur()
+    cursor = get_cursor()
     json_data = request.json
     for course_info in json_data:
         sql = "SELECT * FROM selectedcourse where student_id = %s and course_id = %s"
@@ -193,7 +173,7 @@ def select_course():
 @cross_origin()
 def drop_course():
     hint = []
-    cursor = get_cursur()
+    cursor = get_cursor()
     json_data = request.json
     for course_info in json_data:
         sql = "SELECT * FROM selectedcourse where student_id = %s and course_id = %s"
@@ -216,7 +196,7 @@ def drop_course():
 def fetch_score():
     user_id = request.args.get("id")
     response_data = []
-    cursor = get_cursur()
+    cursor = get_cursor()
     sql = "SELECT course.course_id, course.course_name, course.teacher_name, selectedcourse.student_total_score FROM course,selectedcourse where selectedcourse.student_id = %s and course.course_no = selectedcourse.course_no"
     result = cursor.execute(sql, user_id)
     if cursor.rowcount == 0:
@@ -236,7 +216,7 @@ def fetch_score():
 def teacher_fetch_course():
     user_id = request.args.get("id")
     response_data = []
-    cursor = get_cursur()
+    cursor = get_cursor()
     sql = "SELECT * FROM course where teacher_id = %s"
     result = cursor.execute(sql, user_id)
     if cursor.rowcount == 0:
@@ -257,7 +237,7 @@ def teacher_fetch_course():
 def teacher_fetch_student():
     json_data = request.json
     response_data = []
-    cursor = get_cursur()
+    cursor = get_cursor()
     sql = (
         "SELECT user.user_name, selectedcourse.course_id, selectedcourse.teacher_id, selectedcourse.student_id, selectedcourse.student_usual_score, selectedcourse.student_exam_score FROM user, selectedcourse where selectedcourse.teacher_id = %s and selectedcourse.course_id = %s and user.user_id = selectedcourse.student_id")
     result = cursor.execute(sql, (json_data['user_id'], json_data['course_id']))
@@ -279,10 +259,12 @@ def teacher_fetch_student():
 @cross_origin()
 def teacher_submit_score():
     json_data = request.json
-    cursor = get_cursur()
+    cursor = get_cursor()
     for data in json_data:
         sql = "UPDATE selectedcourse SET student_usual_score = %s, student_exam_score = %s, student_total_score = 0.4 * %s + 0.6 * %s WHERE course_id = %s and student_id = %s"
-        result = cursor.execute(sql, (data['daily_score'], data['examination_score'], data['daily_score'], data['examination_score'], data['course_id'], data['student_id']))
+        result = cursor.execute(sql, (
+        data['daily_score'], data['examination_score'], data['daily_score'], data['examination_score'],
+        data['course_id'], data['student_id']))
     response = jsonify()
     cursor.close()
     response.status_code = 200
