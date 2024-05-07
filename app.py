@@ -45,7 +45,8 @@ def user_login():
 def query_course():
     cursor = get_cursor()
     json_data = request.json
-    result = sqltool.query_course(cursor, json_data['course_id'], json_data['course_name'], json_data['teacher_id'], json_data['teacher_name'], json_data['course_time'])
+    result = sqltool.query_course(cursor, json_data['course_id'], json_data['course_name'], json_data['teacher_id'],
+                                  json_data['teacher_name'], json_data['course_time'])
     if len(result) == 0:
         response = jsonify()
         response.status_code = 204
@@ -139,32 +140,14 @@ def check_schedule(user_id, course_time):
 @app.route('/api/selectcourse', methods=['OPTIONS', 'POST'])
 @cross_origin()
 def select_course():
-    hint = []
+    result = []
     cursor = get_cursor()
     json_data = request.json
     for course_info in json_data:
-        sql = "SELECT * FROM selectedcourse where student_id = %s and course_id = %s"
-        result = cursor.execute(sql, (course_info['user_id'], course_info['course_id']))
-        if result != 0:
-            hint.append(f"已选此课程 ({course_info['course_name']})")
-        else:
-            sql = "SELECT * FROM course where course_id = %s and teacher_id = %s"
-            result = cursor.execute(sql, (course_info['course_id'], course_info['teacher_id']))
-            if cursor.rowcount == 0:
-                hint.append(f"课程不存在 ({course_info['course_name']})")
-            else:
-                result = cursor.fetchone()
-                if result[5] <= result[6]:
-                    hint.append(f"选课人数已满 ({course_info['course_name']})")
-                elif not check_schedule(course_info['user_id'], result[7]):
-                    hint.append(f"课程时间冲突 ({course_info['course_name']})")
-                else:
-                    sql = "UPDATE course SET selected = selected + 1 where course_id = %s and teacher_id = %s"
-                    cursor.execute(sql, (result[1], result[3]))
-                    sql = "INSERT INTO selectedcourse VALUES (%s, %s, %s, %s, %s, %s, %s)"
-                    cursor.execute(sql, (result[0], result[1], result[3], course_info['user_id'], 0, 0, 0))
-                    hint.append(f"选课成功 ({course_info['course_name']})")
-    response = jsonify({"status": "Success", "data": hint})
+        result.append(
+            sqltool.select_course(cursor, course_info['user_id'], course_info['course_id'], course_info['teacher_id']))
+        commit()
+    response = jsonify({"status": "Success", "data": result})
     cursor.close()
     return response
 
@@ -263,8 +246,8 @@ def teacher_submit_score():
     for data in json_data:
         sql = "UPDATE selectedcourse SET student_usual_score = %s, student_exam_score = %s, student_total_score = 0.4 * %s + 0.6 * %s WHERE course_id = %s and student_id = %s"
         result = cursor.execute(sql, (
-        data['daily_score'], data['examination_score'], data['daily_score'], data['examination_score'],
-        data['course_id'], data['student_id']))
+            data['daily_score'], data['examination_score'], data['daily_score'], data['examination_score'],
+            data['course_id'], data['student_id']))
     response = jsonify()
     cursor.close()
     response.status_code = 200

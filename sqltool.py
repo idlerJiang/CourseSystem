@@ -55,3 +55,33 @@ def query_course(cursor, course_id=None, course_name=None, teacher_id=None, teac
         return return_data
     except Exception as e:
         return return_data
+
+
+def select_course(cursor, user_id, course_id, teacher_id):
+    print(user_id, course_id, teacher_id)
+    # 是否已选该课程
+    sql = "select status from selected_course where user_id = %s and course_id = %s and teacher_id = %s"
+    result = cursor.execute(sql, (user_id, course_id, teacher_id))
+    if result > 0:
+        return f"已选此课程(课程号:{course_id}, 教师号:{teacher_id})"
+    # 判断有无空位
+    sql = "select capacity, selected from course_detail where course_id = %s and teacher_id = %s"
+    result = cursor.execute(sql, (course_id, teacher_id))
+    if result > 0:
+        result = cursor.fetchall()
+        capacity = result[0][0]
+        selected = result[0][1]
+        if selected < capacity:
+            sql = "lock tables course_detail write, selected_course write"
+            cursor.execute(sql)
+            sql = "update course_detail set selected = selected + 1 where course_id = %s and teacher_id = %s"
+            cursor.execute(sql, (course_id, teacher_id))
+            sql = "insert into selected_course(course_id, teacher_id, user_id, status) values (%s, %s, %s, %s)"
+            cursor.execute(sql, (course_id, teacher_id, user_id, 1))
+            sql = "unlock tables"
+            cursor.execute(sql)
+            return f"选课成功(课程号:{course_id}, 教师号:{teacher_id})"
+        else:
+            return f"人数已满(课程号:{course_id}, 教师号:{teacher_id})"
+    else:
+        return f"不可选择此课程(课程号:{course_id}, 教师号:{teacher_id})"

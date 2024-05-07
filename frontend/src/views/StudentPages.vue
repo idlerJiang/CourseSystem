@@ -359,12 +359,7 @@ export default {
           requestBody.push({
             user_id: this.userId,
             course_id: course.course_id,
-            course_name: course.course_name,
             teacher_id: course.teacher_id,
-            teacher_name: course.teacher_name,
-            capacity: course.capacity,
-            selected_number: course.selected_number,
-            time: course.time,
           });
         });
 
