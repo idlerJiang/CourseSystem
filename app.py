@@ -63,30 +63,11 @@ def query_course():
 def query_selected_course():
     cursor = get_cursor()
     user_id = request.args.get("id")
-    sql = "SELECT course_no FROM selectedcourse where student_id = %s"
-    cursor.execute(sql, user_id)
-    course_no_result = cursor.fetchall()
-    if len(course_no_result) == 0:
-        response = jsonify()
+    result = sqltool.query_selected_course(cursor, user_id)
+    response = jsonify(result)
+    if len(result) == 0:
         response.status_code = 204
-    else:
-        result = []
-        sql = "select * from course where course_no = %s"
-        for course_no in course_no_result:
-            cursor.execute(sql, course_no[0])
-            result.append(cursor.fetchall())
-        if len(result) == 0:
-            response = jsonify()
-            response.status_code = 204
-        else:
-            response_data = list()
-            for data in result:
-                data = data[0]
-                response_data.append(
-                    {'course_id': data[1], 'course_name': data[2], 'teacher_id': data[3], 'teacher_name': data[4],
-                     'capacity': data[5], 'selected': data[6], 'time': data[7]})
-            response = jsonify(response_data)
-            response.status_code = 200
+    commit()
     cursor.close()
     return response
 

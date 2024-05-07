@@ -111,6 +111,7 @@
                   <el-table-column prop="capacity" label="课程容量"></el-table-column>
                   <el-table-column prop="selected_number" label="已选人数"></el-table-column>
                   <el-table-column prop="time" label="上课时间"></el-table-column>
+                  <el-table-column prop="location" label="上课地点"></el-table-column>
                 </el-table>
                 <div style="margin: 10px;">
                   <el-button type="primary" @click="dropCourses">退选所选课程</el-button>
@@ -220,6 +221,7 @@ export default {
         capacity: 0,
         selected_number: 0,
         time: "time",
+        location: "location",
       }],
 
       // 学生成绩信息
@@ -322,7 +324,8 @@ export default {
             teacher_name: course.teacher_name,
             capacity: course.capacity,
             selected_number: course.selected,
-            time: course.time
+            time: course.time,
+            location: course.location,
           };
         });
         this.showForm = true;
