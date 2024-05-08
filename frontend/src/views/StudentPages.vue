@@ -171,57 +171,57 @@ export default {
       // 选课功能中的输入框
       showForm: false,
       queryInfo: {
-        CourseId: null,
-        CourseName: null,
-        TeacherId: 100027,
-        TeacherName: null,
-        CourseTime: null,
+        CourseId: "",
+        CourseName: "",
+        TeacherId: "",
+        TeacherName: "",
+        CourseTime: "",
       },
 
       // 选课功能中的课程信息
       courseInfo: [{
-        course_id: "course_id",
-        course_name: "course_name",
-        teacher_id: "teacher_id",
-        teacher_name: "teacher_name",
-        capacity: 0,
-        selected_number: 0,
-        time: "time",
-        location: "location"
+        course_id: "",
+        course_name: "",
+        teacher_id: "",
+        teacher_name: "",
+        capacity: "",
+        selected_number: "",
+        time: "",
+        location: ""
       }],
 
       // 选课功能中选中的课程号
       selectedCourses: [{
-        course_id: "course_id",
-        course_name: "course_name",
-        teacher_id: "teacher_id",
-        teacher_name: "teacher_name",
-        capacity: 0,
-        selected_number: 0,
-        time: "time"
+        course_id: "",
+        course_name: "",
+        teacher_id: "",
+        teacher_name: "",
+        capacity: "",
+        selected_number: "",
+        time: ""
       }],
 
       // 退课功能中选中的课程号
       deletedCourses: [{
-        course_id: "course_id",
-        course_name: "course_name",
-        teacher_id: "teacher_id",
-        teacher_name: "teacher_name",
-        capacity: 0,
-        selected_number: 0,
-        time: "time"
+        course_id: "",
+        course_name: "",
+        teacher_id: "",
+        teacher_name: "",
+        capacity: "",
+        selected_number: "",
+        time: ""
       }],
 
       // 学生已经选的课程
       myCourses: [{
-        course_id: "course_id",
-        course_name: "course_name",
-        teacher_id: "teacher_id",
-        teacher_name: "teacher_name",
-        capacity: 0,
-        selected_number: 0,
-        time: "time",
-        location: "location",
+        course_id: "",
+        course_name: "",
+        teacher_id: "",
+        teacher_name: "",
+        capacity: "",
+        selected_number: "",
+        time: "",
+        location: "",
       }],
 
       // 学生成绩信息
@@ -229,7 +229,7 @@ export default {
         course_id: "",
         course_name: "",
         teacher_name: "",
-        score: 0
+        score: ""
       }]
     };
   },
@@ -263,7 +263,16 @@ export default {
             console.log("queryCourses method return code", response.status);
             if (response.status === 204) {
               ElMessage.error('未查询到结果')
-              this.courseInfo = [];
+              this.courseInfo = [{
+                course_id: "",
+                course_name: "",
+                teacher_id: "",
+                teacher_name: "",
+                capacity: "",
+                selected_number: "",
+                time: "",
+                location: ""
+              }];
               return
             }
 
@@ -314,7 +323,16 @@ export default {
         if (response.status === 204) {
           console.error("未查询到已选课程");
           ElMessage.error("未查询到已选课程");
-          this.myCourses = [{}];
+          this.myCourses = [{
+            course_id: "",
+            course_name: "",
+            teacher_id: "",
+            teacher_name: "",
+            capacity: "",
+            selected_number: "",
+            time: "",
+            location: "",
+          }];
           return;
         }
         const courseData = response.data;
@@ -378,9 +396,17 @@ export default {
         const result = response.data;
         if (result.status === "Success") {
           for (const resultKey in result.data) {
-            ElMessage.success("选课结果："+result.data[resultKey]);
+            ElMessage.success("选课结果：" + result.data[resultKey]);
           }
-          this.selectedCourses = []; // 清空已选课程
+          this.selectedCourses = [{
+            course_id: "",
+            course_name: "",
+            teacher_id: "",
+            teacher_name: "",
+            capacity: "",
+            selected_number: "",
+            time: ""
+          }]; // 清空已选课程
           await this.fetchCourses(); // 重新查询课表
         } else {
           ElMessage.error("选课失败：" + result.data);
@@ -418,9 +444,17 @@ export default {
 
         if (result.status === "Success") {
           for (const resultKey in result.data) {
-            ElMessage.success("退课结果："+result.data[resultKey]);
+            ElMessage.success("退课结果：" + result.data[resultKey]);
           }
-          this.deletedCourses = []; // 清空已选课程
+          this.deletedCourses = [{
+            course_id: "",
+            course_name: "",
+            teacher_id: "",
+            teacher_name: "",
+            capacity: "",
+            selected_number: "",
+            time: ""
+          }]; // 清空已选课程
           await this.fetchCourses(); // 重新查询课表
         } else {
           ElMessage.error("退课失败：" + result.data);
@@ -444,10 +478,17 @@ export default {
           ElMessage.success("成绩信息查询成功");
         } else {
           ElMessage.error("成绩信息查询失败");
+          this.myScores = [{
+            course_id: "",
+            course_name: "",
+            teacher_name: "",
+            score: ""
+          }];
           return;
         }
         const scoreData = response.data;
-        this.myScores = scoreData.map(score => {return {
+        this.myScores = scoreData.map(score => {
+          return {
             course_id: score.course_id,
             course_name: score.course_name,
             teacher_name: score.teacher_name,

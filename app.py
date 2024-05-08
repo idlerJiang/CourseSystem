@@ -154,17 +154,15 @@ def fetch_score():
     user_id = request.args.get("id")
     response_data = []
     cursor = get_cursor()
-    sql = "SELECT course.course_id, course.course_name, course.teacher_name, selectedcourse.student_total_score FROM course,selectedcourse where selectedcourse.student_id = %s and course.course_no = selectedcourse.course_no"
-    result = cursor.execute(sql, user_id)
-    if cursor.rowcount == 0:
+    result = sqltool.fetch_score(cursor, user_id)
+    if len(result) == 0:
         response = jsonify()
+        response.status_code = 204
     else:
-        for data in cursor.fetchall():
-            response_data.append(
-                {'course_id': data[0], 'course_name': data[1], 'teacher_name': data[2], 'score': data[3]})
-        response = jsonify(response_data)
+        response = jsonify(result)
+        response.status_code = 200
+    commit()
     cursor.close()
-    response.status_code = 200
     return response
 
 

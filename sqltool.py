@@ -56,12 +56,42 @@ def query_course(cursor, course_id=None, course_name=None, teacher_id=None, teac
 
 
 def select_course(cursor, user_id, course_id, teacher_id):
-    print(user_id, course_id, teacher_id)
+    def check_schedule(course_time):
+        day_dict = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5}
+        schedule = [[0 for _ in range(13)] for __ in range(6)]
+        for course in course_time:
+            times = course.split(" ")
+            for time in times:
+                day = day_dict[time[0]]
+                time = time[1:].split("-")
+                start_time = int(time[0])
+                end_time = int(time[1])
+                for i in range(start_time, end_time + 1):
+                    if schedule[day][i] != 0:
+                        return False
+                    schedule[day][i] = 1
+        return True
+
     # 是否已选该课程
     sql = "select status from selected_course where user_id = %s and course_id = %s and teacher_id = %s"
     result = cursor.execute(sql, (user_id, course_id, teacher_id))
     if result > 0:
         return f"已选此课程(课程号:{course_id}, 教师号:{teacher_id})"
+    # 判断时间冲突
+    sql = "select cd.time from selected_course sc join course_detail cd on sc.course_id = cd.course_id and sc.teacher_id = cd.teacher_id where sc.user_id = %s"
+    result = cursor.execute(sql, user_id)
+    if result > 0:
+        course_time = list()
+        result = cursor.fetchall()
+        for data in result:
+            course_time.append(data[0])
+        sql = "select time from course_detail where course_id = %s and teacher_id = %s"
+        result = cursor.execute(sql, (course_id, teacher_id))
+        if result > 0:
+            result = cursor.fetchone()
+            course_time.append(result[0])
+        if not check_schedule(course_time):
+            return f"课程时间冲突(课程号:{course_id}, 教师号:{teacher_id})"
     # 判断有无空位
     sql = "select capacity, selected from course_detail where course_id = %s and teacher_id = %s"
     result = cursor.execute(sql, (course_id, teacher_id))
@@ -70,12 +100,14 @@ def select_course(cursor, user_id, course_id, teacher_id):
         capacity = result[0][0]
         selected = result[0][1]
         if selected < capacity:
-            sql = "lock tables course_detail write, selected_course write"
+            sql = "lock tables course_detail write, selected_course write, course_score write"
             cursor.execute(sql)
             sql = "update course_detail set selected = selected + 1 where course_id = %s and teacher_id = %s"
             cursor.execute(sql, (course_id, teacher_id))
             sql = "insert into selected_course(course_id, teacher_id, user_id, status) values (%s, %s, %s, %s)"
             cursor.execute(sql, (course_id, teacher_id, user_id, 1))
+            sql = "insert into course_score(course_id, user_id) values (%s, %s)"
+            cursor.execute(sql, (course_id, user_id))
             sql = "unlock tables"
             cursor.execute(sql)
             return f"选课成功(课程号:{course_id}, 教师号:{teacher_id})"
@@ -92,18 +124,19 @@ def drop_course(cursor, user_id, course_id, teacher_id):
     result = cursor.execute(sql, (user_id, course_id, teacher_id))
     if result == 0:
         return f"未选此课程(课程号:{course_id}, 教师号:{teacher_id})"
-    sql = "lock tables course_detail write, selected_course write"
+    sql = "lock tables course_detail write, selected_course write, course_score write"
     cursor.execute(sql)
     sql = "update course_detail set selected = selected - 1 where course_id = %s and teacher_id = %s"
     cursor.execute(sql, (course_id, teacher_id))
     sql = "delete from selected_course where course_id = %s and teacher_id = %s and user_id = %s"
     result = cursor.execute(sql, (course_id, teacher_id, user_id))
+    sql = "delete from course_score where course_id = %s and user_id = %s"
+    cursor.execute(sql, (course_id, user_id))
     sql = "unlock tables"
     cursor.execute(sql)
     if result > 0:
         return f"退课成功(课程号:{course_id}, 教师号:{teacher_id})"
     return f"退课失败(课程号:{course_id}, 教师号:{teacher_id})"
-
 
 
 def query_selected_course(cursor, user_id):
@@ -120,4 +153,14 @@ def query_selected_course(cursor, user_id):
     return return_data
 
 
-
+def fetch_score(cursor, user_id):
+    sql = "select cs.course_id, cp.course_name, ud.user_name, cs.final_score from course_score cs join selected_course sc on cs.course_id = sc.course_id and cs.user_id = sc.user_id join course_detail cd on sc.course_id = cd.course_id and sc.teacher_id = cd.teacher_id join course_profile cp on cd.course_id = cp.course_id join user_detail ud on cd.user_id = ud.user_id where cs.user_id = %s"
+    result = cursor.execute(sql, user_id)
+    print(result)
+    return_data = list()
+    if result == 0:
+        return return_data
+    result = cursor.fetchall()
+    for data in result:
+        return_data.append({'course_id': data[0], 'course_name': data[1], 'teacher_name': data[2], 'score': data[3]})
+    return return_data
