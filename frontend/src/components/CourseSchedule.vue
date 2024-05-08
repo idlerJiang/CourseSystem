@@ -20,18 +20,18 @@ export default {
   data() {
     return {
       tableData: [
-        { time: "8:00 - 8:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "8:55 - 9:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "10:00 - 10:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "10:55 - 11:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "13:00 - 13:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "13:55 - 14:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "15:00 - 15:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "15:55 - 16:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "18:00 - 18:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "18:55 - 19:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "20:00 - 20:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" },
-        { time: "20:55 - 21:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: "" }
+        {time: "8:00 - 8:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "8:55 - 9:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "10:00 - 10:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "10:55 - 11:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "13:00 - 13:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "13:55 - 14:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "15:00 - 15:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "15:55 - 16:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "18:00 - 18:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "18:55 - 19:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "20:00 - 20:45", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""},
+        {time: "20:55 - 21:40", monday: "", tuesday: "", wednesday: "", thursday: "", friday: ""}
       ],
     };
   },
@@ -64,43 +64,45 @@ export default {
 
     this.myCourses.forEach((course) => {
       // 将课程的时间转换为字符数组
-      const times = course.time.split('');
-      console.log("拆分的时间", times);
+      // 一1-2 四11-12
+      const course_times = course.time.split(' ');
+      console.log("拆分的时间", course_times);
+      course_times.forEach((course_time) => {
+        const times = course_time.split('');
 
-      // 提取第一个字符作为周几
-      // 提取第一个字符作为周几，并映射到英文
-      const day = dayMapping[times[0]];
-      console.log("周", day);
+        // 提取第一个字符作为周几
+        // 提取第一个字符作为周几，并映射到英文
+        const day = dayMapping[times[0]];
+        console.log("周", day);
 
-      // 提取第2和4个数字作为上课的时间
-      // 注意9-10,11-12的情况
-      let startTime = "";
-      let endTime = "";
-      if (times[1] === "9") {
-        startTime = timeMapping[9];
-        endTime = timeMapping[10];
-      }
-      else if (times[2] != "-") {
-        startTime = timeMapping[11];
-        endTime = timeMapping[12];
-      }
-      else {
-        startTime = timeMapping[times[1]];
-        endTime = timeMapping[times[3]];
-      }
-      console.log("上课时间", startTime, endTime);
-
-      // 根据开始和结束时间找到对应的表格行的索引
-      const startIndex = this.tableData.findIndex((row) => row.time === startTime);
-      const endIndex = this.tableData.findIndex((row) => row.time === endTime);
-      console.log("开始和结束的索引", startIndex, endIndex);
-
-      if (startIndex !== -1 && endIndex !== -1) {
-        // 根据课程的日期更新表格行的对应列
-        for (let i = startIndex; i <= endIndex; i++) {
-          this.tableData[i][day] = course.course_name;
+        // 提取第2和4个数字作为上课的时间
+        // 注意9-10,11-12的情况
+        let startTime = "";
+        let endTime = "";
+        if (times[1] === "9") {
+          startTime = timeMapping[9];
+          endTime = timeMapping[10];
+        } else if (times[2] !== "-") {
+          startTime = timeMapping[11];
+          endTime = timeMapping[12];
+        } else {
+          startTime = timeMapping[times[1]];
+          endTime = timeMapping[times[3]];
         }
-      }
+        console.log("上课时间", startTime, endTime);
+
+        // 根据开始和结束时间找到对应的表格行的索引
+        const startIndex = this.tableData.findIndex((row) => row.time === startTime);
+        const endIndex = this.tableData.findIndex((row) => row.time === endTime);
+        console.log("开始和结束的索引", startIndex, endIndex);
+
+        if (startIndex !== -1 && endIndex !== -1) {
+          // 根据课程的日期更新表格行的对应列
+          for (let i = startIndex; i <= endIndex; i++) {
+            this.tableData[i][day] = course.course_name;
+          }
+        }
+      });
     });
   },
 };

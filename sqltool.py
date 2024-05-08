@@ -85,6 +85,27 @@ def select_course(cursor, user_id, course_id, teacher_id):
         return f"不可选择此课程(课程号:{course_id}, 教师号:{teacher_id})"
 
 
+def drop_course(cursor, user_id, course_id, teacher_id):
+    print(user_id, course_id, teacher_id)
+    # 是否已选该课程
+    sql = "select status from selected_course where user_id = %s and course_id = %s and teacher_id = %s"
+    result = cursor.execute(sql, (user_id, course_id, teacher_id))
+    if result == 0:
+        return f"未选此课程(课程号:{course_id}, 教师号:{teacher_id})"
+    sql = "lock tables course_detail write, selected_course write"
+    cursor.execute(sql)
+    sql = "update course_detail set selected = selected - 1 where course_id = %s and teacher_id = %s"
+    cursor.execute(sql, (course_id, teacher_id))
+    sql = "delete from selected_course where course_id = %s and teacher_id = %s and user_id = %s"
+    result = cursor.execute(sql, (course_id, teacher_id, user_id))
+    sql = "unlock tables"
+    cursor.execute(sql)
+    if result > 0:
+        return f"退课成功(课程号:{course_id}, 教师号:{teacher_id})"
+    return f"退课失败(课程号:{course_id}, 教师号:{teacher_id})"
+
+
+
 def query_selected_course(cursor, user_id):
     sql = "select cp.course_id, cp.course_name, cp.teacher_id, ud.user_name, cd.capacity, cd.selected, cd.time, cr.location from selected_course sc join course_profile cp on sc.course_id = cp.course_id and sc.teacher_id = cp.teacher_id join coursesystem.course_detail cd on cp.course_id = cd.course_id and cp.teacher_id = cd.teacher_id join coursesystem.user_detail ud on cd.user_id = ud.user_id join coursesystem.classroom cr on cd.classroom_id = cr.classroom_id where sc.user_id = %s"
     result = cursor.execute(sql, user_id)

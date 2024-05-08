@@ -263,6 +263,7 @@ export default {
             console.log("queryCourses method return code", response.status);
             if (response.status === 204) {
               ElMessage.error('未查询到结果')
+              this.courseInfo = [];
               return
             }
 
@@ -313,6 +314,7 @@ export default {
         if (response.status === 204) {
           console.error("未查询到已选课程");
           ElMessage.error("未查询到已选课程");
+          this.myCourses = [{}];
           return;
         }
         const courseData = response.data;
@@ -401,12 +403,7 @@ export default {
           requestBody.push({
             user_id: this.userId,
             course_id: course.course_id,
-            course_name: course.course_name,
             teacher_id: course.teacher_id,
-            teacher_name: course.teacher_name,
-            capacity: course.capacity,
-            selected_number: course.selected_number,
-            time: course.time,
           });
         });
 
