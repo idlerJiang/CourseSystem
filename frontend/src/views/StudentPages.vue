@@ -14,6 +14,9 @@
           <el-col :span="8" :offset="8">
             <div class="flex items-center justify-end h-full">
               <div style="display: flex; align-items: center; justify-content: center; height: 100%;">
+                <span class="text-lg font-semibold mr-5" style="margin-left: 20px ; margin-right: 10px;">{{
+                    this.term
+                  }}</span>
                 <el-avatar :size="32" class="mr-4"
                            src="https://cube.elemecdn.com/0/88/03b0d39583f48206768a7534e55bcpng.png"/>
                 <span class="text-lg font-semibold mr-5" style="margin-left: 20px ; margin-right: 10px;">{{
@@ -156,10 +159,21 @@ export default {
   // 在created生命周期钩子中访问路由参数
   created() {
     // console.log("this.$route",this.$route);
-    this.userId = this.$route.params.userId;
-    this.userName = this.$route.params.userName;
-    // console.log("userId", this.userId);
-    // console.log("userName", this.userName);
+    try {
+      this.userId = this.$route.query.userId;
+      this.userName = this.$route.query.userName;
+      this.term = this.$route.query.term;
+    } catch (error) {
+      console.error("获取信息失败", error);
+      ElMessage.error("获取信息失败");
+      this.$router.push({
+        name: 'home'
+      });
+    }
+
+
+    console.log("userId", this.userId);
+    console.log("userName", this.userName);
   },
 
   // data()函数部分
@@ -256,7 +270,8 @@ export default {
         course_name: course_name,
         teacher_id: teacher_id,
         teacher_name: teacher_name,
-        course_time: course_time
+        course_time: course_time,
+        term: this.term
       };
       await axios.post(apiUrl, queryParams)
           .then(response => {
@@ -317,7 +332,7 @@ export default {
 
       try {
         // 发送 GET 请求
-        const response = await axios.get(apiUrl, {params: {id: this.userId}});
+        const response = await axios.get(apiUrl, {params: {id: this.userId, term: this.term}});
 
         console.log("return from fetchCourses, response: ", response.data);
         if (response.status === 204) {
@@ -383,6 +398,7 @@ export default {
             user_id: this.userId,
             course_id: course.course_id,
             teacher_id: course.teacher_id,
+            term: this.term
           });
         });
 
@@ -430,6 +446,7 @@ export default {
             user_id: this.userId,
             course_id: course.course_id,
             teacher_id: course.teacher_id,
+            term: this.term
           });
         });
 
@@ -471,7 +488,7 @@ export default {
       const apiUrl = `${this.host}/api/fetchscore`;
       try {
         // 发送 GET 请求
-        const response = await axios.get(apiUrl, {params: {id: this.userId}});
+        const response = await axios.get(apiUrl, {params: {id: this.userId, term: this.term}});
 
         console.log("return from fetchScores, response: ", response);
         if (response.status === 200) {

@@ -6,7 +6,7 @@
 
         <el-main width="40%">
           <el-image style="width: 100%; height: 80%; user-select: none; pointer-events: none; margin-top: -40px;"
-            :src="'/cover.png'" />
+                    :src="'/cover.png'"/>
         </el-main>
 
         <el-aside width="40%" class="aside-content">
@@ -18,13 +18,13 @@
 
               <div class="circle-icons" style="margin-bottom: 10px;">
                 <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21" fill="none">
-                  <circle cx="10.5" cy="10.5" r="10.5" fill="#F34B4B" />
+                  <circle cx="10.5" cy="10.5" r="10.5" fill="#F34B4B"/>
                 </svg>
                 <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21" fill="none">
-                  <circle cx="10.5" cy="10.5" r="10.5" fill="#FFC700" />
+                  <circle cx="10.5" cy="10.5" r="10.5" fill="#FFC700"/>
                 </svg>
                 <svg xmlns="http://www.w3.org/2000/svg" width="21" height="21" viewBox="0 0 21 21" fill="none">
-                  <circle cx="10.5" cy="10.5" r="10.5" fill="#1097F9" />
+                  <circle cx="10.5" cy="10.5" r="10.5" fill="#1097F9"/>
                 </svg>
               </div>
 
@@ -36,11 +36,17 @@
                 </el-input>
 
                 <el-input v-model="password" prefix-icon="el-icon-lock" placeholder="密码" show-password
-                  style="margin-bottom: 30px;">
+                          style="margin-bottom: 30px;">
                   <template #prepend>
                     <span style="font-size: small;">password</span>
                   </template>
                 </el-input>
+
+                <el-select v-model="selected_term" class="m-2" placeholder="请选择学期">
+                  <el-option v-for="term in terms" :key="term.term_name"
+                             :label="term.term_name"
+                             :value="term.term_name"/>
+                </el-select>
               </div>
 
               <div>
@@ -58,28 +64,60 @@
 <script>
 import axios from "axios";
 import md5 from "md5";
-import { ElMessage } from 'element-plus'
+import {ElMessage} from 'element-plus'
 
 
 export default {
   // define a component
   name: "IndexLogin",
-  components: {
-
-  },
+  components: {},
 
   // data of the component
   data() {
     return {
       userId: "",
-      password: "123456",
+      password: "",
       userName: "default",
       host: "http://127.0.0.1:9000",
+      selected_term: "",
+
+      terms: [{
+        term_id: "",
+        term_name: ""
+      }],
     };
   },
 
+
   // methods of the component
   methods: {
+    async get_term() {
+      const apiUrl = `${this.host}/api/getterm`;
+      try {
+        // 发送 GET 请求
+        const response = await axios.get(apiUrl);
+
+        // 处理返回码不为200的时候，提示登录失败
+        if (response.status !== 200) {
+          ElMessage.error("获取学期信息失败");
+          return;
+        }
+
+        // 处理登录成功后的逻辑
+        ElMessage.success("获取学期信息成功");
+        this.terms = response.data.map(term => {
+          return {
+            term_id: term.term_id,
+            term_name: term.term_name
+          };
+        });
+      } catch (error) {
+        console.error("登录失败：", error);
+        ElMessage.error("登录失败");
+      }
+
+    },
+
     async login() {
       const id = this.userId;
       const password = this.password;
@@ -108,18 +146,26 @@ export default {
         ElMessage.success("登录成功");
         console.log("登录成功", response.data.data.roleId);
         if (response.data.data.roleId === 1) {
-          this.$router.push({ name: 'students', params: { userId: id, userName: response.data.data.userName } });
+          this.$router.push({
+            name: 'students',
+            query: {userId: id, userName: response.data.data.userName, term: this.selected_term}
+          });
+        } else {
+          this.$router.push({
+            name: 'teachers',
+            query: {userId: id, userName: response.data.data.userName, term: this.selected_term}
+          });
         }
-        else {
-          this.$router.push({ name: 'teachers', params: { userId: id, userName: response.data.data.userName } });
-        }
-      }
-      catch (error) {
+      } catch (error) {
         console.error("登录失败：", error);
         ElMessage.error("登录失败");
       }
     }
   },
+
+  mounted: function () {
+    this.get_term();
+  }
 
 }
 </script>
@@ -133,7 +179,7 @@ body {
 
 
 .common-layout {
-  height: 90vh;  /* Adjust this value as needed */
+  height: 90vh; /* Adjust this value as needed */
 
   overflow: hidden;
 }
@@ -182,7 +228,6 @@ body {
   flex-direction: column;
   width: 80%;
 }
-
 
 
 .circle-icons {

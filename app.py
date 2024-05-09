@@ -17,6 +17,23 @@ def commit():
     db.commit()
 
 
+@app.route('/api/getterm', methods=['OPTIONS', 'GET'])
+@cross_origin()
+def get_term():
+    cursor = get_cursor()
+    result = sqltool.get_term(cursor)
+
+    if len(result) == 0:
+        response = jsonify()
+        response.status_code = 204
+    else:
+        response = jsonify(result)
+        response.status_code = 200
+    cursor.close()
+    commit()
+    return response
+
+
 @app.route('/api/login', methods=['OPTIONS', 'POST'])
 @cross_origin()
 def user_login():
@@ -45,7 +62,8 @@ def user_login():
 def query_course():
     cursor = get_cursor()
     json_data = request.json
-    result = sqltool.query_course(cursor, json_data['course_id'], json_data['course_name'], json_data['teacher_id'],
+    result = sqltool.query_course(cursor, json_data['term'], json_data['course_id'], json_data['course_name'],
+                                  json_data['teacher_id'],
                                   json_data['teacher_name'], json_data['course_time'])
     if len(result) == 0:
         response = jsonify()
@@ -63,59 +81,14 @@ def query_course():
 def query_selected_course():
     cursor = get_cursor()
     user_id = request.args.get("id")
-    result = sqltool.query_selected_course(cursor, user_id)
+    term = request.args.get("term")
+    result = sqltool.query_selected_course(cursor, term, user_id)
     response = jsonify(result)
     if len(result) == 0:
         response.status_code = 204
     commit()
     cursor.close()
     return response
-
-
-def check_schedule(user_id, course_time):
-    schedule = [[0 for i in range(13)] for j in range(6)]
-    cursor = get_cursor()
-    sql = "SELECT time FROM course, selectedcourse where course.course_no = selectedcourse.course_no and selectedcourse.student_id = %s"
-    cursor.execute(sql, user_id)
-    result = cursor.fetchall()
-    for temp in result:
-        real_time = temp[0]
-        for time in real_time.split(','):
-            day = 0
-            if time[0] == '一':
-                day = 1
-            elif time[0] == '二':
-                day = 2
-            elif time[0] == '三':
-                day = 3
-            elif time[0] == '四':
-                day = 4
-            elif time[0] == '五':
-                day = 5
-            time = time[1:].split('-')
-            start = int(time[0])
-            end = int(time[1])
-            for i in range(start, end + 1):
-                schedule[day][i] = 1
-    for time in course_time.split(','):
-        day = 0
-        if time[0] == '一':
-            day = 1
-        elif time[0] == '二':
-            day = 2
-        elif time[0] == '三':
-            day = 3
-        elif time[0] == '四':
-            day = 4
-        elif time[0] == '五':
-            day = 5
-        time = time[1:].split('-')
-        start = int(time[0])
-        end = int(time[1])
-        for i in range(start, end + 1):
-            if schedule[day][i] != 0:
-                return False
-    return True
 
 
 @app.route('/api/selectcourse', methods=['OPTIONS', 'POST'])
@@ -126,9 +99,11 @@ def select_course():
     json_data = request.json
     for course_info in json_data:
         result.append(
-            sqltool.select_course(cursor, course_info['user_id'], course_info['course_id'], course_info['teacher_id']))
+            sqltool.select_course(cursor, course_info['term'], course_info['user_id'], course_info['course_id'],
+                                  course_info['teacher_id']))
         commit()
     response = jsonify({"status": "Success", "data": result})
+    commit()
     cursor.close()
     return response
 
@@ -141,9 +116,11 @@ def drop_course():
     json_data = request.json
     for course_info in json_data:
         result.append(
-            sqltool.drop_course(cursor, course_info['user_id'], course_info['course_id'], course_info['teacher_id']))
+            sqltool.drop_course(cursor, course_info['term'], course_info['user_id'], course_info['course_id'],
+                                course_info['teacher_id']))
         commit()
     response = jsonify({"status": "Success", "data": result})
+    commit()
     cursor.close()
     return response
 
@@ -152,9 +129,10 @@ def drop_course():
 @cross_origin()
 def fetch_score():
     user_id = request.args.get("id")
+    term = request.args.get("term")
     response_data = []
     cursor = get_cursor()
-    result = sqltool.fetch_score(cursor, user_id)
+    result = sqltool.fetch_score(cursor, term, user_id)
     if len(result) == 0:
         response = jsonify()
         response.status_code = 204
@@ -170,20 +148,17 @@ def fetch_score():
 @cross_origin()
 def teacher_fetch_course():
     user_id = request.args.get("id")
-    response_data = []
+    term = request.args.get("term")
     cursor = get_cursor()
-    sql = "SELECT * FROM course where teacher_id = %s"
-    result = cursor.execute(sql, user_id)
-    if cursor.rowcount == 0:
+    result = sqltool.teacher_fetch_course(cursor, term, user_id)
+    if len(result) == 0:
         response = jsonify()
+        response.status_code = 204
     else:
-        for data in cursor.fetchall():
-            response_data.append(
-                {'course_id': data[1], 'course_name': data[2], 'teacher_id': data[3], 'teacher_name': data[4],
-                 'capacity': data[5], 'selected': data[6], 'time': data[7]})
-        response = jsonify(response_data)
+        response = jsonify(result)
+        response.status_code = 200
+    commit()
     cursor.close()
-    response.status_code = 200
     return response
 
 
@@ -191,21 +166,19 @@ def teacher_fetch_course():
 @cross_origin()
 def teacher_fetch_student():
     json_data = request.json
-    response_data = []
+    user_id = json_data['user_id']
+    course_id, teacher_id = json_data['course'].split('-')
+    term = json_data['term']
     cursor = get_cursor()
-    sql = (
-        "SELECT user.user_name, selectedcourse.course_id, selectedcourse.teacher_id, selectedcourse.student_id, selectedcourse.student_usual_score, selectedcourse.student_exam_score FROM user, selectedcourse where selectedcourse.teacher_id = %s and selectedcourse.course_id = %s and user.user_id = selectedcourse.student_id")
-    result = cursor.execute(sql, (json_data['user_id'], json_data['course_id']))
-    if cursor.rowcount == 0:
+
+    result = sqltool.teacher_fetch_student(cursor, term, course_id, teacher_id)
+    if len(result) == 0:
         response = jsonify()
         response.status_code = 204
     else:
-        for data in cursor.fetchall():
-            response_data.append(
-                {'course_id': data[1], 'teacher_id': data[2], 'student_id': data[3],
-                 'student_name': data[0], 'daily_score': data[4], 'examination_score': data[5]})
-        response = jsonify(response_data)
+        response = jsonify(result)
         response.status_code = 200
+    commit()
     cursor.close()
     return response
 
@@ -216,13 +189,11 @@ def teacher_submit_score():
     json_data = request.json
     cursor = get_cursor()
     for data in json_data:
-        sql = "UPDATE selectedcourse SET student_usual_score = %s, student_exam_score = %s, student_total_score = 0.4 * %s + 0.6 * %s WHERE course_id = %s and student_id = %s"
-        result = cursor.execute(sql, (
-            data['daily_score'], data['examination_score'], data['daily_score'], data['examination_score'],
-            data['course_id'], data['student_id']))
+        result = sqltool.teacher_submit_score(cursor, data)
     response = jsonify()
-    cursor.close()
     response.status_code = 200
+    commit()
+    cursor.close()
     return response
 
 

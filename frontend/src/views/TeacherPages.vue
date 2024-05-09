@@ -48,10 +48,10 @@
               <el-table-column prop="course_id" label="课程号"/>
               <el-table-column prop="course_name" label="课程名"/>
               <el-table-column prop="teacher_id" label="教师号"/>
-              <el-table-column prop="teacher_name" label="教师姓名"/>
               <el-table-column prop="capacity" label="课程容量"/>
               <el-table-column prop="selected_number" label="已选人数"/>
               <el-table-column prop="time" label="上课时间"/>
+              <el-table-column prop="location" label="上课地点"/>
             </el-table>
           </div>
 
@@ -61,8 +61,9 @@
             <div style="margin: 20px;">
               <label for="course-select">选择课程班级：</label>
               <el-select v-model="selectedCourse" class="m-2" placeholder="">
-                <el-option v-for="course in myCourses" :key="course.course_id" :label="course - select"
-                           :value="course.course_id"/>
+                <el-option v-for="course in myCourses" :key="`${course.course_id}-${course.teacher_id}`"
+                           :label="`${course.course_name}-${course.teacher_id}`"
+                           :value="`${course.course_id}-${course.teacher_id}`"/>
               </el-select>
 
               <!--对选中的selectedCourse进行查询，返回数据给tableData-->
@@ -83,6 +84,12 @@
                           <label for="exam-score-input">考试成绩</label>
                           <el-input v-model="scope.row.examination_score" class="w-80" placeholder="考试成绩"
                                     id="exam-score-input"/>
+                        </el-col>
+
+                        <el-col :span="4">
+                          <label for="contribution-input">成绩占比</label>
+                          <el-input v-model="scope.row.contribution" class="w-80" placeholder="成绩占比"
+                                    id="contribution-input"/>
                         </el-col>
 
                       </el-row>
@@ -124,11 +131,17 @@ export default {
 
   // 在created生命周期钩子中访问路由参数
   created() {
-    console.log("this.$route", this.$route);
-    this.userId = this.$route.params.userId;
-    this.userName = this.$route.params.userName;
-    console.log("userId", this.userId);
-    console.log("userName", this.userName);
+    try {
+      this.userId = this.$route.query.userId;
+      this.userName = this.$route.query.userName;
+      this.term = this.$route.query.term;
+    } catch (error) {
+      console.error("获取信息失败", error);
+      ElMessage.error("获取信息失败");
+      this.$router.push({
+        name: 'home'
+      });
+    }
 
     this.fetchCourses();
   },
@@ -146,11 +159,10 @@ export default {
         course_id: "",
         course_name: "",
         teacher_id: "",
-        teacher_name: "",
-        capacity: 0,
-        selected_number: 0,
-        time: "time",
-        score: 0
+        capacity: "",
+        selected_number: "",
+        time: "",
+        location: ""
       }],
 
       // 上传成绩表格需要的信息
@@ -161,15 +173,19 @@ export default {
 
         student_id: "",
         student_name: "",
-        daily_score: 0,
-        examination_score: 0
+        daily_score: "",
+        examination_score: "",
+        contribution: "5 5"
       }],
 
       SubmitData: [
         {
+          course: "",
+
           student_id: "",
           daily_score: 0,
-          examination_score: 0
+          examination_score: 0,
+          contribution: "5 5"
         },
       ]
     };
@@ -197,7 +213,13 @@ export default {
       console.log("apiUrl", apiUrl);
       try {
         // 发送 GET 请求
-        const response = await axios.get(apiUrl, {params: {id: this.userId}});
+        const response = await axios.get(apiUrl, {params: {id: this.userId, term: this.term}});
+
+        if (response.status === 204) {
+          console.error("未查询到课程");
+          ElMessage.error("未查询到课程");
+          return;
+        }
 
         console.log("return from fetchCourses, response: ", response.data);
 
@@ -207,10 +229,10 @@ export default {
             course_id: course.course_id,
             course_name: course.course_name,
             teacher_id: course.teacher_id,
-            teacher_name: course.teacher_name,
             capacity: course.capacity,
             selected_number: course.selected,
-            time: course.time
+            time: course.time,
+            location: course.location
           };
         });
         console.log("this.myCourses", this.myCourses);
@@ -235,7 +257,8 @@ export default {
       try {
         const queryParams = {
           user_id: this.userId,
-          course_id: this.selectedCourse
+          course: this.selectedCourse,
+          term: this.term
         };
         // 发送 POST 请求
         const response = await axios.post(apiUrl, queryParams);
@@ -244,18 +267,30 @@ export default {
         // 用JSON.parse()方法将字符串转换为JSON对象
         if (response.status === 204) {
           ElMessage.error("班级下暂无学生");
-          this.tableData = [{}];
+          this.tableData = [{
+            // 这两个信息帮助筛选班级
+            course_id: "",
+            teacher_id: "",
+
+            student_id: "",
+            student_name: "",
+            daily_score: "",
+            examination_score: "",
+            contribution: "5 5"
+          }];
           return;
         }
         const courseData = response.data;
         this.tableData = courseData.map(course => {
           return {
             course_id: course.course_id,
+            teacher_id: course.teacher_id,
+
             student_name: course.student_name,
             student_id: course.student_id,
-            teacher_id: course.teacher_id,
             daily_score: course.daily_score,
-            examination_score: course.examination_score
+            examination_score: course.examination_score,
+            contribution: course.contribution
           };
         });
 
@@ -277,11 +312,12 @@ export default {
         // 将tableData中的数据转换为SubmitData中的数据
         this.SubmitData = this.tableData.map(student => {
           return {
-            user_id: this.userId,
-            course_id: this.selectedCourse,
+            course: this.selectedCourse,
+
             student_id: student.student_id,
             daily_score: student.daily_score,
-            examination_score: student.examination_score
+            examination_score: student.examination_score,
+            contribution: student.contribution
           }
         });
         console.log("this.SubmitData", this.SubmitData);

@@ -8,12 +8,12 @@ const routes = [
     component: IndexLogin
   },
   {
-    path: '/students/:userId/:userName',
+    path: '/students',
     name: 'students',
     component: () => import('../views/StudentPages.vue'),
   },
   {
-    path: '/teachers/:userId/:userName',
+    path: '/teachers',
     name: 'teachers',
     component: () => import('../views/TeacherPages.vue'),
 
