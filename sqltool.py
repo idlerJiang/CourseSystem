@@ -82,6 +82,8 @@ def query_course(cursor, term, course_id=None, course_name=None, teacher_id=None
 
 
 def select_course(cursor, term, user_id, course_id, teacher_id):
+    print("args: ", term, user_id, course_id, teacher_id)
+
     def check_schedule(course_time):
         day_dict = {"一": 1, "二": 2, "三": 3, "四": 4, "五": 5}
         schedule = [[0 for _ in range(13)] for __ in range(6)]
@@ -98,50 +100,62 @@ def select_course(cursor, term, user_id, course_id, teacher_id):
                     schedule[day][i] = 1
         return True
 
-    term_id = get_term_id(cursor, term)
-    # 是否已选该课程
-    sql = "select status from selected_course where user_id = %s and course_id = %s and teacher_id = %s"
-    result = cursor.execute(sql, (user_id, course_id, teacher_id))
-    if result > 0:
-        return f"已选此课程(课程号:{course_id}, 教师号:{teacher_id})"
-    # 判断时间冲突
-    sql = "select cd.time from selected_course sc join course_detail cd on sc.course_id = cd.course_id and sc.teacher_id = cd.teacher_id where sc.user_id = %s and cd.term_id = %s"
-    result = cursor.execute(sql, (user_id, term_id))
-    if result > 0:
-        course_time = list()
-        result = cursor.fetchall()
-        for data in result:
-            course_time.append(data[0])
-        sql = "select time from course_detail where course_id = %s and teacher_id = %s and term_id = %s"
+    try:
+        if course_id is None or course_id == "":
+            return f"未给出课程号(课程号:{course_id}, 教师号:{teacher_id})"
+        if teacher_id is None or teacher_id == "":
+            return f"未给出教师号(课程号:{course_id}, 教师号:{teacher_id})"
+
+        term_id = get_term_id(cursor, term)
+        # 是否已选该课程
+        sql = "select status from selected_course where user_id = %s and course_id = %s"
+        result = cursor.execute(sql, (user_id, course_id))
+        if result > 0:
+            return f"已选此课程(课程号:{course_id}, 教师号:{teacher_id})"
+        # 判断时间冲突
+        sql = "select cd.time from selected_course sc join course_detail cd on sc.course_id = cd.course_id and sc.teacher_id = cd.teacher_id where sc.user_id = %s and cd.term_id = %s"
+        result = cursor.execute(sql, (user_id, term_id))
+        if result > 0:
+            course_time = list()
+            result = cursor.fetchall()
+            for data in result:
+                course_time.append(data[0])
+            sql = "select time from course_detail where course_id = %s and teacher_id = %s and term_id = %s"
+            result = cursor.execute(sql, (course_id, teacher_id, term_id))
+            if result > 0:
+                result = cursor.fetchone()
+                course_time.append(result[0])
+            if not check_schedule(course_time):
+                return f"课程时间冲突(课程号:{course_id}, 教师号:{teacher_id})"
+        # 判断有无空位
+        sql = "select capacity, selected from course_detail where course_id = %s and teacher_id = %s and term_id = %s"
         result = cursor.execute(sql, (course_id, teacher_id, term_id))
         if result > 0:
-            result = cursor.fetchone()
-            course_time.append(result[0])
-        if not check_schedule(course_time):
-            return f"课程时间冲突(课程号:{course_id}, 教师号:{teacher_id})"
-    # 判断有无空位
-    sql = "select capacity, selected from course_detail where course_id = %s and teacher_id = %s and term_id = %s"
-    result = cursor.execute(sql, (course_id, teacher_id, term_id))
-    if result > 0:
-        result = cursor.fetchall()
-        capacity = result[0][0]
-        selected = result[0][1]
-        if selected < capacity:
-            sql = "lock tables course_detail write, selected_course write, course_score write"
-            cursor.execute(sql)
-            sql = "update course_detail set selected = selected + 1 where course_id = %s and teacher_id = %s and term_id = %s"
-            cursor.execute(sql, (course_id, teacher_id, term_id))
-            sql = "insert into selected_course(term_id, course_id, teacher_id, user_id, status) values (%s, %s, %s, %s, %s)"
-            cursor.execute(sql, (term_id, course_id, teacher_id, user_id, 1))
-            sql = "insert into course_score(course_id, user_id) values (%s, %s)"
-            cursor.execute(sql, (course_id, user_id))
-            sql = "unlock tables"
-            cursor.execute(sql)
-            return f"选课成功(课程号:{course_id}, 教师号:{teacher_id})"
+            result = cursor.fetchall()
+            capacity = result[0][0]
+            selected = result[0][1]
+            if selected < capacity:
+                sql = "lock tables course_detail write, selected_course write, course_score write"
+                cursor.execute(sql)
+                sql = "update course_detail set selected = selected + 1 where course_id = %s and teacher_id = %s and term_id = %s"
+                cursor.execute(sql, (course_id, teacher_id, term_id))
+                sql = "insert into selected_course(term_id, course_id, teacher_id, user_id, status) values (%s, %s, %s, %s, %s)"
+                cursor.execute(sql, (term_id, course_id, teacher_id, user_id, 1))
+                sql = "insert into course_score(course_id, user_id) values (%s, %s)"
+                cursor.execute(sql, (course_id, user_id))
+                sql = "unlock tables"
+                cursor.execute(sql)
+                return f"选课成功(课程号:{course_id}, 教师号:{teacher_id})"
+            else:
+                return f"人数已满(课程号:{course_id}, 教师号:{teacher_id})"
         else:
-            return f"人数已满(课程号:{course_id}, 教师号:{teacher_id})"
-    else:
-        return f"不可选择此课程(课程号:{course_id}, 教师号:{teacher_id})"
+            return f"不可选择此课程(课程号:{course_id}, 教师号:{teacher_id})"
+    except Exception as e:
+        print("Error!", e)
+        print("args: ", term, user_id, course_id, teacher_id)
+        sql = "unlock tables"
+        cursor.execute(sql)
+        return f"数据库出错(课程号:{course_id}, 教师号:{teacher_id})"
 
 
 def drop_course(cursor, term, user_id, course_id, teacher_id):
